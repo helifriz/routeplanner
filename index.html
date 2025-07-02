@@ -26,9 +26,11 @@
       display: flex;
       gap: 10px;
       margin-top: 20px;
+      flex-wrap: wrap;
     }
     .buttons-container button {
-      flex: 1;
+      flex: 1 1 30%;
+      min-width: 120px;
     }
   </style>
 </head>
@@ -51,6 +53,7 @@
   <div class="buttons-container">
     <button onclick="openForeFlight()">Open ForeFlight</button>
     <button onclick="openWindy()">Open Windy</button>
+    <button onclick="emailLinks()">Email Links</button>
   </div>
 
   <!-- Load airport data -->
@@ -92,9 +95,7 @@
         const foreflightRoute = points.map(p => p.original).join(';');
         const foreflightURL = `foreflightmobile://maps/search?query=${encodeURIComponent(foreflightRoute)}`;
         window.open(foreflightURL, '_blank');
-      } catch (err) {
-        // error already alerted
-      }
+      } catch (err) {}
     }
 
     function openWindy() {
@@ -106,11 +107,29 @@
         const avgLon = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
         const windyURL = `https://www.windy.com/route-planner/${windyRouteEncoded}?wind,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
         window.open(windyURL, '_blank');
-      } catch (err) {
-        // error already alerted
-      }
+      } catch (err) {}
+    }
+
+    function emailLinks() {
+      try {
+        const points = getPoints();
+        const foreflightRoute = points.map(p => p.original).join(';');
+        const foreflightURL = `foreflightmobile://maps/search?query=${encodeURIComponent(foreflightRoute)}`;
+
+        const windyRouteStr = points.map(p => `${p.lat},${p.lon}`).join(';');
+        const windyRouteEncoded = encodeURIComponent(windyRouteStr);
+        const avgLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
+        const avgLon = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
+        const windyURL = `https://www.windy.com/route-planner/${windyRouteEncoded}?wind,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
+
+        const subject = encodeURIComponent("Flight Route Planner Links");
+        const body = encodeURIComponent(`Here are the route planner links:\n\nForeFlight:\n${foreflightURL}\n\nWindy:\n${windyURL}`);
+
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+      } catch (err) {}
     }
   </script>
+
 </body>
 </html>
 
