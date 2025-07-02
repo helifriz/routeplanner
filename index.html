@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ForeFlight & Windy Route Planner (BC Airports)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 40px auto;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+    }
+    input, button {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    a {
+      display: block;
+      margin-top: 20px;
+      text-align: center;
+      font-weight: bold;
+      color: #0645AD;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>ForeFlight & Windy Route Planner (BC Only)</h2>
+
+  <label for="from">From (ICAO or lat,long)</label>
+  <input type="text" id="from" placeholder="e.g. CYVR" />
+
+  <label for="via1">Via 1 (optional)</label>
+  <input type="text" id="via1" placeholder="e.g. CYLW" />
+
+  <label for="via2">Via 2 (optional)</label>
+  <input type="text" id="via2" placeholder="e.g. CYCG" />
+
+  <label for="to">To (ICAO or lat,long)</label>
+  <input type="text" id="to" placeholder="e.g. CYXS" />
+
+  <button onclick="checkWeather()">Check Weather</button>
+
+  <!-- Load airport data first -->
+  <script src="bc-airports.js"></script>
+
+  <script>
+    function parseLocation(input) {
+      input = input.trim().toUpperCase();
+      if (!input) return null;
+      if (input.includes(',')) {
+        const [lat, lon] = input.split(',').map(Number);
+        if (isNaN(lat) || isNaN(lon)) {
+          alert(`Invalid latitude or longitude: ${input}`);
+          throw new Error(`Invalid lat/lon: ${input}`);
+        }
+        return { lat, lon, original: input };
+      } else if (airportLookup[input]) {
+        const [lat, lon] = airportLookup[input];
+        return { lat, lon, original: input };
+      } else {
+        alert(`Unknown or unsupported airport code: ${input}`);
+        throw new Error(`Unknown code: ${input}`);
+      }
+    }
+
+    function checkWeather() {
+      try {
+        const inputs = ['from', 'via1', 'via2', 'to'].map(id => document.getElementById(id).value);
+        const points = inputs.map(parseLocation).filter(p => p !== null);
+
+        if (points.length < 2) {
+          alert("At least From and To points are required.");
+          return;
+        }
+
+        const foreflightRoute = points.map(p => p.original).join(';');
+        const foreflightURL = `foreflightmobile://maps/search?query=${encodeURIComponent(foreflightRoute)}`;
+
+        const windyPoints = points.map(p => `${p.lat},${p.lon}`).join(';');
+        const avgLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
+        const avgLon = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
+        const windyURL = `https://www.windy.com/route-planner/${windyPoints}?wind,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
+
+        // Open both links automatically in new tabs/windows
+        window.open(foreflightURL, '_blank');
+        window.open(windyURL, '_blank');
+
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+  </script>
+</body>
+</html>
+
+
