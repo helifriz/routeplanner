@@ -39,16 +39,16 @@
   <h2>ForeFlight & Windy Route Planner (BC Only)</h2>
 
   <label for="from">From (ICAO or lat,long)</label>
-  <input type="text" id="from" placeholder="e.g. CYVR" />
+  <input type="text" id="from" placeholder="e.g. CYVR or 49.1939,-123.1833" />
 
   <label for="via1">Via 1 (optional)</label>
-  <input type="text" id="via1" placeholder="e.g. CYLW" />
+  <input type="text" id="via1" placeholder="e.g. CYLW or 50.0167,-119.3833" />
 
   <label for="via2">Via 2 (optional)</label>
-  <input type="text" id="via2" placeholder="e.g. CYCG" />
+  <input type="text" id="via2" placeholder="e.g. CYCG or 49.2964,-117.6325" />
 
   <label for="to">To (ICAO or lat,long)</label>
-  <input type="text" id="to" placeholder="e.g. CYXS" />
+  <input type="text" id="to" placeholder="e.g. CYXS or 53.8849,-122.6761" />
 
   <div class="buttons-container">
     <button onclick="openForeFlight()">Open ForeFlight</button>
@@ -79,6 +79,25 @@
       }
     }
 
+    function convertCoord(value, isLat) {
+      const abs = Math.abs(value);
+      const deg = Math.floor(abs);
+      const min = (abs - deg) * 60;
+      const dir = isLat
+        ? value >= 0 ? 'N' : 'S'
+        : value >= 0 ? 'E' : 'W';
+      return `${dir}${deg}°${min.toFixed(1)}'`;
+    }
+
+    function formatForForeFlight(p) {
+      if (p.original.includes(',')) {
+        const lat = convertCoord(p.lat, true);
+        const lon = convertCoord(p.lon, false);
+        return `${lat} ${lon}`;
+      }
+      return p.original;
+    }
+
     function getPoints() {
       const inputs = ['from', 'via1', 'via2', 'to'].map(id => document.getElementById(id).value);
       const points = inputs.map(parseLocation).filter(p => p !== null);
@@ -92,8 +111,7 @@
     function openForeFlight() {
       try {
         const points = getPoints();
-        // Use spaces (encoded as '+') between points for ForeFlight
-        const foreflightRoute = points.map(p => p.original).join(' ');
+        const foreflightRoute = points.map(formatForForeFlight).join(' ');
         const foreflightURL = `foreflightmobile://maps/search?q=${encodeURIComponent(foreflightRoute)}`;
         window.open(foreflightURL, '_blank');
       } catch (err) {}
@@ -114,7 +132,7 @@
     function emailLinks() {
       try {
         const points = getPoints();
-        const foreflightRoute = points.map(p => p.original).join(' ');
+        const foreflightRoute = points.map(formatForForeFlight).join(' ');
         const foreflightURL = `foreflightmobile://maps/search?q=${encodeURIComponent(foreflightRoute)}`;
 
         const windyRouteStr = points.map(p => `${p.lat},${p.lon}`).join(';');
@@ -133,6 +151,7 @@
 
 </body>
 </html>
+
 
 
 
