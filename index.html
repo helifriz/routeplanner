@@ -39,10 +39,10 @@
   <h2>ForeFlight & Windy Route Planner (BC Only)</h2>
 
   <label for="from">From (ICAO or lat,long)</label>
-  <input type="text" id="from" placeholder="e.g. CYVR or 49.1939,-123.1833" />
+  <input type="text" id="from" placeholder="e.g. CYVR or 52.9923,-122.5045" />
 
   <label for="via1">Via 1 (optional)</label>
-  <input type="text" id="via1" placeholder="e.g. CYLW or 50.0167,-119.3833" />
+  <input type="text" id="via1" placeholder="e.g. CYWL or 53.0669,-122.5100" />
 
   <label for="via2">Via 2 (optional)</label>
   <input type="text" id="via2" placeholder="e.g. CYCG or 49.2964,-117.6325" />
@@ -56,7 +56,6 @@
     <button onclick="emailLinks()">Email Links</button>
   </div>
 
-  <!-- Load airport data -->
   <script src="bc-airports.js"></script>
 
   <script>
@@ -79,21 +78,23 @@
       }
     }
 
-    function convertCoord(value, isLat) {
+    function convertDDMMmm(value, isLat) {
+      const dir = isLat ? (value >= 0 ? 'N' : 'S') : (value >= 0 ? 'E' : 'W');
       const abs = Math.abs(value);
       const deg = Math.floor(abs);
       const min = (abs - deg) * 60;
-      const dir = isLat
-        ? value >= 0 ? 'N' : 'S'
-        : value >= 0 ? 'E' : 'W';
-      return `${dir}${deg}°${min.toFixed(1)}'`;
+      const paddedDeg = isLat
+        ? deg.toString().padStart(2, '0')
+        : deg.toString().padStart(3, '0');
+      const minStr = min.toFixed(2).padStart(5, '0');
+      return `${paddedDeg}${minStr}${dir}`;
     }
 
     function formatForForeFlight(p) {
       if (p.original.includes(',')) {
-        const lat = convertCoord(p.lat, true);
-        const lon = convertCoord(p.lon, false);
-        return `${lat} ${lon}`;
+        const lat = convertDDMMmm(p.lat, true);
+        const lon = convertDDMMmm(p.lon, false);
+        return `${lat}/${lon}`;
       }
       return p.original;
     }
@@ -111,8 +112,8 @@
     function openForeFlight() {
       try {
         const points = getPoints();
-        const foreflightRoute = points.map(formatForForeFlight).join(' ');
-        const foreflightURL = `foreflightmobile://maps/search?q=${encodeURIComponent(foreflightRoute)}`;
+        const route = points.map(formatForForeFlight).join('+');
+        const foreflightURL = `foreflightmobile://maps/search?q=${route}`;
         window.open(foreflightURL, '_blank');
       } catch (err) {}
     }
@@ -132,8 +133,8 @@
     function emailLinks() {
       try {
         const points = getPoints();
-        const foreflightRoute = points.map(formatForForeFlight).join(' ');
-        const foreflightURL = `foreflightmobile://maps/search?q=${encodeURIComponent(foreflightRoute)}`;
+        const route = points.map(formatForForeFlight).join('+');
+        const foreflightURL = `foreflightmobile://maps/search?q=${route}`;
 
         const windyRouteStr = points.map(p => `${p.lat},${p.lon}`).join(';');
         const windyRouteEncoded = encodeURIComponent(windyRouteStr);
@@ -148,11 +149,5 @@
       } catch (err) {}
     }
   </script>
-
 </body>
 </html>
-
-
-
-
-
