@@ -75,7 +75,7 @@
         const [lat, lon] = airportLookup[input];
         return { lat, lon, original: input };
       } else {
-        return { original: input }; // assume ICAO code even if not in lookup
+        return { original: input };
       }
     }
 
@@ -184,13 +184,19 @@
       try {
         const points = getPoints();
         const route = [];
+        let dep = null;
+        let dest = null;
 
         for (const p of points) {
+          let entry = null;
           if (p.lat !== undefined && p.lon !== undefined) {
-            route.push(toSkyVectorFormat(p.lat, p.lon));
+            entry = toSkyVectorFormat(p.lat, p.lon);
           } else if (/^[A-Z]{4}$/.test(p.original)) {
-            route.push(p.original);
+            entry = p.original;
+            if (!dep) dep = p.original;
+            dest = p.original;
           }
+          if (entry) route.push(entry);
         }
 
         if (route.length < 2) {
@@ -198,7 +204,8 @@
           return;
         }
 
-        const url = `https://skyvector.com/?fpl=${route.join('+')}`;
+        const base = `https://skyvector.com/?fpl=${route.join('+')}`;
+        const url = (dep && dest) ? `${base}&dep=${dep}&dest=${dest}` : base;
         window.open(url, '_blank');
       } catch (err) {
         console.error("SkyVector error:", err);
@@ -229,18 +236,23 @@
           metarURL = `https://metar-taf.com/?c=${latInt}.${lonInt}&hl=${hl}`;
         }
 
-        const skyVectorRoute = points.map(p => {
+        const skyVectorRoute = [];
+        let dep = null;
+        let dest = null;
+        for (const p of points) {
           if (p.lat !== undefined && p.lon !== undefined) {
-            return toSkyVectorFormat(p.lat, p.lon);
+            skyVectorRoute.push(toSkyVectorFormat(p.lat, p.lon));
           } else if (/^[A-Z]{4}$/.test(p.original)) {
-            return p.original;
+            skyVectorRoute.push(p.original);
+            if (!dep) dep = p.original;
+            dest = p.original;
           }
-          return null;
-        }).filter(x => x !== null);
+        }
 
         let skyVectorURL = "Unavailable";
         if (skyVectorRoute.length >= 2) {
-          skyVectorURL = `https://skyvector.com/?fpl=${skyVectorRoute.join('+')}`;
+          const base = `https://skyvector.com/?fpl=${skyVectorRoute.join('+')}`;
+          skyVectorURL = (dep && dest) ? `${base}&dep=${dep}&dest=${dest}` : base;
         }
 
         const subject = encodeURIComponent("Flight Route Planner Links");
