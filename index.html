@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ForeFlight & Windy Route Planner (BC Airports)</title>
+  <title>ForeFlight, Windy & METAR-TAF Route Planner (BC Airports)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -29,14 +29,14 @@
       flex-wrap: wrap;
     }
     .buttons-container button {
-      flex: 1 1 30%;
+      flex: 1 1 45%;
       min-width: 120px;
     }
   </style>
 </head>
 <body>
 
-  <h2>ForeFlight & Windy Route Planner</h2>
+  <h2>ForeFlight, Windy & METAR-TAF Route Planner (BC Only)</h2>
 
   <label for="from">From (ICAO or lat,long)</label>
   <input type="text" id="from" placeholder="e.g. CYVR or 52.9923,-122.5045" />
@@ -53,6 +53,7 @@
   <div class="buttons-container">
     <button onclick="openForeFlight()">Open ForeFlight</button>
     <button onclick="openWindy()">Open Windy</button>
+    <button onclick="openMetarTaf()">Open METAR-TAF</button>
     <button onclick="emailLinks()">Email Links</button>
   </div>
 
@@ -135,6 +136,29 @@
       }
     }
 
+    function openMetarTaf() {
+      try {
+        const fromInput = document.getElementById('from').value.trim();
+        if (!fromInput) {
+          alert("Please enter the From location.");
+          return;
+        }
+        const fromPoint = parseLocation(fromInput);
+        if (!fromPoint) return;
+
+        const latInt = Math.round(fromPoint.lat * 10000);
+        const lonInt = Math.round(fromPoint.lon * 10000);
+
+        const isICAO = /^[A-Z]{4}$/.test(fromInput.toUpperCase());
+        const hl = isICAO ? fromInput.toUpperCase() : "";
+
+        const url = `https://metar-taf.com/?c=${latInt}.${lonInt}&hl=${hl}`;
+        window.open(url, '_blank');
+      } catch (err) {
+        console.error("METAR-TAF error:", err);
+      }
+    }
+
     function emailLinks() {
       try {
         const points = getPoints();
@@ -147,8 +171,28 @@
         const avgLon = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
         const windyURL = `https://www.windy.com/route-planner/vfr/${windyRouteEncoded}?layer=radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
 
+        // Add METAR-TAF link for 'From' point
+        const fromInput = document.getElementById('from').value.trim();
+        let metarURL = "";
+        if (fromInput) {
+          try {
+            const fromPoint = parseLocation(fromInput);
+            const latInt = Math.round(fromPoint.lat * 10000);
+            const lonInt = Math.round(fromPoint.lon * 10000);
+            const isICAO = /^[A-Z]{4}$/.test(fromInput.toUpperCase());
+            const hl = isICAO ? fromInput.toUpperCase() : "";
+            metarURL = `https://metar-taf.com/?c=${latInt}.${lonInt}&hl=${hl}`;
+          } catch {
+            // Ignore errors here, metarURL stays empty
+          }
+        }
+
         const subject = encodeURIComponent("Flight Route Planner Links");
-        const body = encodeURIComponent(`Here are the route planner links:\n\nForeFlight:\n${foreflightURL}\n\nWindy:\n${windyURL}`);
+        let bodyText = `Here are the route planner links:\n\nForeFlight:\n${foreflightURL}\n\nWindy:\n${windyURL}`;
+        if(metarURL) {
+          bodyText += `\n\nMETAR-TAF:\n${metarURL}`;
+        }
+        const body = encodeURIComponent(bodyText);
 
         window.location.href = `mailto:?subject=${subject}&body=${body}`;
       } catch (err) {
