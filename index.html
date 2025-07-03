@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ForeFlight, Windy & METAR-TAF Route Planner (BC Airports)</title>
+  <title>Route Planner (ForeFlight, Windy, SkyVector, METAR-TAF)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -36,7 +36,7 @@
 </head>
 <body>
 
-  <h2>ForeFlight, Windy & METAR-TAF Route Planner (BC Only)</h2>
+  <h2>Route Planner (BC Only)</h2>
 
   <label for="from">From (ICAO or lat,long)</label>
   <input type="text" id="from" placeholder="e.g. CYVR or 52.9923,-122.5045" />
@@ -54,6 +54,7 @@
     <button onclick="openForeFlight()">Open ForeFlight</button>
     <button onclick="openWindy()">Open Windy</button>
     <button onclick="openMetarTaf()">Open METAR-TAF</button>
+    <button onclick="openSkyVector()">Open SkyVector</button>
     <button onclick="emailLinks()">Email Links</button>
   </div>
 
@@ -74,8 +75,7 @@
         const [lat, lon] = airportLookup[input];
         return { lat, lon, original: input };
       } else {
-        alert(`Unknown or unsupported airport code: ${input}`);
-        throw new Error(`Unknown code: ${input}`);
+        return { original: input }; // assume ICAO code even if not in lookup
       }
     }
 
@@ -92,12 +92,30 @@
     }
 
     function formatForForeFlight(p) {
-      if (p.original.includes(',')) {
+      if (p.lat !== undefined && p.lon !== undefined) {
         const lat = convertDDMMmm(p.lat, true);
         const lon = convertDDMMmm(p.lon, false);
         return `${lat}/${lon}`;
       }
       return p.original;
+    }
+
+    function toSkyVectorFormat(lat, lon) {
+      function convert(value, isLat) {
+        const abs = Math.abs(value);
+        const deg = Math.floor(abs);
+        const minFloat = (abs - deg) * 60;
+        const min = Math.floor(minFloat);
+        const sec = Math.round((minFloat - min) * 60);
+        const degStr = deg.toString().padStart(isLat ? 2 : 3, '0');
+        const minStr = min.toString().padStart(2, '0');
+        const secStr = sec.toString().padStart(2, '0');
+        const dir = isLat
+          ? (value >= 0 ? 'N' : 'S')
+          : (value >= 0 ? 'E' : 'W');
+        return `${degStr}${minStr}${secStr}${dir}`;
+      }
+      return `${convert(lat, true)}${convert(lon, false)}`;
     }
 
     function getPoints() {
@@ -123,13 +141,15 @@
 
     function openWindy() {
       try {
-        const points = getPoints();
+        const points = getPoints().filter(p => p.lat !== undefined && p.lon !== undefined);
+        if (points.length < 2) {
+          alert("Windy requires lat/lon for at least two points.");
+          return;
+        }
         const windyRouteStr = points.map(p => `${p.lat},${p.lon}`).join(';');
-        const windyRouteEncoded = encodeURIComponent(windyRouteStr);
         const avgLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
         const avgLon = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
-
-        const windyURL = `https://www.windy.com/route-planner/vfr/${windyRouteEncoded}?radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
+        const windyURL = `https://www.windy.com/route-planner/vfr/${windyRouteStr}?radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
         window.open(windyURL, '_blank');
       } catch (err) {
         console.error("Windy error:", err);
@@ -144,18 +164,44 @@
           return;
         }
         const fromPoint = parseLocation(fromInput);
-        if (!fromPoint) return;
+        if (!fromPoint || fromPoint.lat === undefined || fromPoint.lon === undefined) {
+          alert("METAR-TAF requires a valid lat/lon From point.");
+          return;
+        }
 
         const latInt = Math.round(fromPoint.lat * 10000);
         const lonInt = Math.round(fromPoint.lon * 10000);
-
-        const isICAO = /^[A-Z]{4}$/.test(fromInput.toUpperCase());
-        const hl = isICAO ? fromInput.toUpperCase() : "";
-
+        const isICAO = /^[A-Z]{4}$/.test(fromPoint.original);
+        const hl = isICAO ? fromPoint.original : "";
         const url = `https://metar-taf.com/?c=${latInt}.${lonInt}&hl=${hl}`;
         window.open(url, '_blank');
       } catch (err) {
         console.error("METAR-TAF error:", err);
+      }
+    }
+
+    function openSkyVector() {
+      try {
+        const points = getPoints();
+        const route = [];
+
+        for (const p of points) {
+          if (p.lat !== undefined && p.lon !== undefined) {
+            route.push(toSkyVectorFormat(p.lat, p.lon));
+          } else if (/^[A-Z]{4}$/.test(p.original)) {
+            route.push(p.original);
+          }
+        }
+
+        if (route.length < 2) {
+          alert("SkyVector requires at least two valid waypoints.");
+          return;
+        }
+
+        const url = `https://skyvector.com/?fpl=${route.join('+')}`;
+        window.open(url, '_blank');
+      } catch (err) {
+        console.error("SkyVector error:", err);
       }
     }
 
@@ -165,35 +211,40 @@
         const route = points.map(formatForForeFlight).join('+');
         const foreflightURL = `foreflightmobile://maps/search?q=${route}`;
 
-        const windyRouteStr = points.map(p => `${p.lat},${p.lon}`).join(';');
-        const windyRouteEncoded = encodeURIComponent(windyRouteStr);
-        const avgLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
-        const avgLon = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
-        const windyURL = `https://www.windy.com/route-planner/vfr/${windyRouteEncoded}?layer=radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
+        const windyPoints = points.filter(p => p.lat !== undefined && p.lon !== undefined);
+        let windyURL = "Unavailable";
+        if (windyPoints.length >= 2) {
+          const windyRouteStr = windyPoints.map(p => `${p.lat},${p.lon}`).join(';');
+          const avgLat = windyPoints.reduce((sum, p) => sum + p.lat, 0) / windyPoints.length;
+          const avgLon = windyPoints.reduce((sum, p) => sum + p.lon, 0) / windyPoints.length;
+          windyURL = `https://www.windy.com/route-planner/vfr/${windyRouteStr}?radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
+        }
 
-        // Add METAR-TAF link for 'From' point
-        const fromInput = document.getElementById('from').value.trim();
-        let metarURL = "";
-        if (fromInput) {
-          try {
-            const fromPoint = parseLocation(fromInput);
-            const latInt = Math.round(fromPoint.lat * 10000);
-            const lonInt = Math.round(fromPoint.lon * 10000);
-            const isICAO = /^[A-Z]{4}$/.test(fromInput.toUpperCase());
-            const hl = isICAO ? fromInput.toUpperCase() : "";
-            metarURL = `https://metar-taf.com/?c=${latInt}.${lonInt}&hl=${hl}`;
-          } catch {
-            // Ignore errors here, metarURL stays empty
+        const fromPoint = parseLocation(document.getElementById('from').value.trim());
+        let metarURL = "Unavailable";
+        if (fromPoint.lat !== undefined && fromPoint.lon !== undefined) {
+          const latInt = Math.round(fromPoint.lat * 10000);
+          const lonInt = Math.round(fromPoint.lon * 10000);
+          const hl = /^[A-Z]{4}$/.test(fromPoint.original) ? fromPoint.original : "";
+          metarURL = `https://metar-taf.com/?c=${latInt}.${lonInt}&hl=${hl}`;
+        }
+
+        const skyVectorRoute = points.map(p => {
+          if (p.lat !== undefined && p.lon !== undefined) {
+            return toSkyVectorFormat(p.lat, p.lon);
+          } else if (/^[A-Z]{4}$/.test(p.original)) {
+            return p.original;
           }
+          return null;
+        }).filter(x => x !== null);
+
+        let skyVectorURL = "Unavailable";
+        if (skyVectorRoute.length >= 2) {
+          skyVectorURL = `https://skyvector.com/?fpl=${skyVectorRoute.join('+')}`;
         }
 
         const subject = encodeURIComponent("Flight Route Planner Links");
-        let bodyText = `Here are the route planner links:\n\nForeFlight:\n${foreflightURL}\n\nWindy:\n${windyURL}`;
-        if(metarURL) {
-          bodyText += `\n\nMETAR-TAF:\n${metarURL}`;
-        }
-        const body = encodeURIComponent(bodyText);
-
+        const body = encodeURIComponent(`ForeFlight:\n${foreflightURL}\n\nWindy:\n${windyURL}\n\nMETAR-TAF:\n${metarURL}\n\nSkyVector:\n${skyVectorURL}`);
         window.location.href = `mailto:?subject=${subject}&body=${body}`;
       } catch (err) {
         console.error("Email error:", err);
