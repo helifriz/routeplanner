@@ -129,7 +129,7 @@
         const avgLon = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
 
         const windyURL = `https://www.windy.com/route-planner/vfr/${windyRouteEncoded}?layer=radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
-        window.open(`https://windy.app.link/?link=${encodeURIComponent(windyURL)}`, '_blank');
+        window.open(windyURL, '_blank');
       } catch (err) {
         console.error("Windy error:", err);
       }
