@@ -115,7 +115,9 @@
         const route = points.map(formatForForeFlight).join('+');
         const foreflightURL = `foreflightmobile://maps/search?q=${route}`;
         window.open(foreflightURL, '_blank');
-      } catch (err) {}
+      } catch (err) {
+        console.error("ForeFlight error:", err);
+      }
     }
 
     function openWindy() {
@@ -125,9 +127,12 @@
         const windyRouteEncoded = encodeURIComponent(windyRouteStr);
         const avgLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
         const avgLon = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
-        const windyURL = `https://www.windy.com/route-planner/vfr/${windyRouteEncoded}?radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
+
+        const windyURL = `https://www.windy.com/route-planner/vfr/${windyRouteEncoded}?layer=radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
         window.open(windyURL, '_blank');
-      } catch (err) {}
+      } catch (err) {
+        console.error("Windy error:", err);
+      }
     }
 
     function emailLinks() {
@@ -140,13 +145,15 @@
         const windyRouteEncoded = encodeURIComponent(windyRouteStr);
         const avgLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
         const avgLon = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
-        const windyURL = `https://www.windy.com/route-planner/vfr/${windyRouteEncoded}?radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
+        const windyURL = `https://www.windy.com/route-planner/vfr/${windyRouteEncoded}?layer=radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
 
         const subject = encodeURIComponent("Flight Route Planner Links");
         const body = encodeURIComponent(`Here are the route planner links:\n\nForeFlight:\n${foreflightURL}\n\nWindy:\n${windyURL}`);
 
         window.location.href = `mailto:?subject=${subject}&body=${body}`;
-      } catch (err) {}
+      } catch (err) {
+        console.error("Email error:", err);
+      }
     }
   </script>
 </body>
