@@ -125,7 +125,7 @@
         const windyRouteEncoded = encodeURIComponent(windyRouteStr);
         const avgLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
         const avgLon = points.reduce((sum, p) => sum + p.lon, 0) / points.length;
-        const windyURL = `https://www.windy.com/route-planner/${windyRouteEncoded}?vfr,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
+        const windyURL = `https://www.windy.com/route-planner/${windyRouteEncoded}?radar,${avgLat.toFixed(4)},${avgLon.toFixed(4)},7,p:cities`;
         window.open(windyURL, '_blank');
       } catch (err) {}
     }
